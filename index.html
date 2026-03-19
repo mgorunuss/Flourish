@@ -1374,7 +1374,7 @@ function buildScoreChart(containerId, data, labels){
   `;
 }
 
-
+function buildLineChart(containerId, title, data, labels, color, goal, unit, invertGoal=false){
   const el=document.getElementById(containerId);
   if(!el)return;
   const todayVal=data[data.length-1];
