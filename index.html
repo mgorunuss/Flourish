@@ -167,6 +167,8 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
 
 /* ── CHARTS ── */
 .chart-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.chart-filter{flex:1;padding:7px 4px;border-radius:20px;border:1.5px solid var(--border);background:transparent;font-family:'Nunito',sans-serif;font-size:12px;font-weight:700;color:var(--ink3);cursor:pointer;transition:all .2s}
+.chart-filter.on{background:var(--lime);border-color:var(--lime);color:#fff}
 .chart-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
 .chart-title{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700}
 .chart-today{font-family:'DM Mono',monospace;font-size:18px;font-weight:500}
@@ -481,7 +483,7 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
     </div>
     <div class="slabel">ANTRENMANLAR</div>
     <div class="log-items" id="logList"></div>
-    <div id="logEmpty" class="empty-state" style="display:none"><div class="ei">📋</div><p>Henüz antrenman yok.</p></div>
+    <div id="logEmpty" class="empty-state"><div class="ei">📋</div><p>Henüz antrenman yok.</p></div>
   </div>
 
   <!-- ══ HEALTH ══ -->
@@ -528,15 +530,14 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
           <div class="tbar-lbl"><span id="sugarLbl">0 g</span><span>25 g</span></div>
         </div>
         <div class="chip-row">
-          <button class="chip" onclick="openSugarModal('Çay/Kahve',4)">🍵 Çay</button>
-          <button class="chip" onclick="openSugarModal('Kola',35)">🥤 Kola</button>
-          <button class="chip" onclick="openSugarModal('Bisküvi',8)">🍪 Bisküvi</button>
-          <button class="chip" onclick="openSugarModal('Meyve suyu',22)">🧃 Meyve suyu</button>
-          <button class="chip" onclick="openSugarModal('Çikolata',5)">🍫 Çikolata</button>
-          <button class="chip" onclick="openSugarModal('Pasta',30)">🎂 Pasta</button>
-          <button class="chip" onclick="openSugarModal('Bal',6)">🍯 Bal</button>
-          <button class="chip" onclick="openCubeSugar()">🟫 Küp Şeker</button>
-          <button class="chip" onclick="openSugarModal('Özel',0)">✏️ Özel</button>
+          <button class="chip" onclick="openSugarModal('cay')">🍵 Çay</button>
+          <button class="chip" onclick="openSugarModal('kola')">🥤 Kola</button>
+          <button class="chip" onclick="openSugarModal('biskuvi')">🍪 Bisküvi</button>
+          <button class="chip" onclick="openSugarModal('meyvesuyu')">🧃 Meyve suyu</button>
+          <button class="chip" onclick="openSugarModal('cikolata')">🍫 Çikolata</button>
+          <button class="chip" onclick="openSugarModal('pasta')">🎂 Pasta</button>
+          <button class="chip" onclick="openSugarModal('bal')">🍯 Bal</button>
+          <button class="chip" onclick="openSugarModal('ozel')">✏️ Özel</button>
         </div>
         <div class="t-warn" id="sugarWarn">⚠️ Günlük şeker sınırını aştın.</div>
         <div class="slog" id="sugarLog"></div>
@@ -597,7 +598,14 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
     </div>
   </div>
   <div class="page" id="pg-stats">
-    <div class="phead"><div class="phead-title">Grafik</div><div class="phead-sub">Son 7 gün</div></div>
+    <div class="phead"><div class="phead-title">Grafik</div><div class="phead-sub" id="statsSub">Son 7 gün</div></div>
+    <!-- Time filter -->
+    <div style="display:flex;gap:6px;padding:0 20px 12px;flex-shrink:0">
+      <button class="chart-filter on" id="cf7"   onclick="setChartRange(7)">7G</button>
+      <button class="chart-filter"    id="cf30"  onclick="setChartRange(30)">1A</button>
+      <button class="chart-filter"    id="cf90"  onclick="setChartRange(90)">3A</button>
+      <button class="chart-filter"    id="cf365" onclick="setChartRange(365)">1Y</button>
+    </div>
     <div class="cards">
       <div class="chart-card" id="chartCal"></div>
       <div class="chart-card" id="chartSteps"></div>
@@ -874,34 +882,23 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
   <div class="sheet">
     <div class="sh"></div>
     <div class="sheet-title" id="sugarTitle">Şeker Ekle</div>
-
-    <!-- Unit toggle -->
-    <div style="display:flex;gap:0;background:var(--s2);border-radius:30px;padding:3px;margin-bottom:18px">
-      <button id="unitGram" onclick="setSugarUnit('gram')" style="flex:1;padding:8px;border-radius:26px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:var(--sugar);color:#fff;transition:all .2s">⚖️ Gram</button>
-      <button id="unitCube" onclick="setSugarUnit('cube')" style="flex:1;padding:8px;border-radius:26px;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;background:transparent;color:var(--ink3);transition:all .2s">🟫 Küp</button>
-    </div>
+    <div class="sheet-sub" id="sugarSubtitle">Miktarı gir</div>
 
     <div class="irow" style="margin-bottom:8px">
       <div class="ibox">
-        <span class="ilbl" id="sgUnitLbl">Miktar (g)</span>
+        <span class="ilbl" id="sgUnitLbl">Miktar</span>
         <div class="nwrap" style="border-color:rgba(245,166,35,.3)">
           <button class="nbtn" onclick="adjSg(-1)">−</button>
-          <input class="nfield" id="sgInp" type="number" value="5" min="1" style="color:var(--sugar)" oninput="updSg()">
+          <input class="nfield" id="sgInp" type="number" value="1" min="1" style="color:var(--sugar)" oninput="updSg()">
           <button class="nbtn" onclick="adjSg(+1)">+</button>
         </div>
       </div>
     </div>
 
-    <!-- Quick chips - changes based on unit -->
-    <div class="chips" style="margin-bottom:14px" id="sgChips">
-      <button class="sch" onclick="setSgVal(4)">4g</button>
-      <button class="sch" onclick="setSgVal(8)">8g</button>
-      <button class="sch" onclick="setSgVal(15)">15g</button>
-      <button class="sch" onclick="setSgVal(25)">25g</button>
-    </div>
+    <div class="chips" style="margin-bottom:14px" id="sgChips"></div>
 
     <div class="cal-preview" style="background:rgba(245,166,35,.04);border-color:rgba(245,166,35,.2)">
-      <div class="cpn" id="sgPrev" style="color:var(--sugar)">5</div>
+      <div class="cpn" id="sgPrev" style="color:var(--sugar)">0</div>
       <div><div class="cpl" id="sgPrevLbl">gram şeker</div><div class="cpn2" id="sgNote"></div></div>
     </div>
     <button class="btn-main" style="background:var(--sugar)" onclick="logSugar()">Kaydet</button>
@@ -998,13 +995,32 @@ function snap(){S.hist[todayKey()]={steps:S.steps,water:S.water,sugar:totalSg(),
 function totalSg(){return S.sugarLog.reduce((a,x)=>a+x.g,0);}
 function totalBk(){return S.bookLog.reduce((a,x)=>a+x.p,0);}
 function totalCal(){return S.log.reduce((a,x)=>a+x.cal,0);}
-function getLast7(){
-  return Array.from({length:7},(_,i)=>{
-    const d=new Date();d.setDate(d.getDate()-(6-i));
+let chartDays = 7;
+
+function setChartRange(n){
+  chartDays = n;
+  document.querySelectorAll('.chart-filter').forEach(b=>b.classList.remove('on'));
+  document.getElementById('cf'+n).classList.add('on');
+  const labels = {7:'Son 7 gün',30:'Son 1 ay',90:'Son 3 ay',365:'Son 1 yıl'};
+  document.getElementById('statsSub').textContent = labels[n]||('Son '+n+' gün');
+  snap(); renderCharts();
+}
+
+function getDays(n){
+  return Array.from({length:n},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(n-1-i));
     const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    return{key,label:['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'][d.getDay()],isToday:i===6};
+    const isToday = i===n-1;
+    // Label: for 7 days show day name, for others show day/month
+    let label;
+    if(n<=7) label=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'][d.getDay()];
+    else if(n<=31) label=`${d.getDate()}/${d.getMonth()+1}`;
+    else label=`${d.getDate()}/${d.getMonth()+1}`;
+    return{key,label,isToday,d};
   });
 }
+
+function getLast7(){ return getDays(7); }
 
 // ═══════════ CLOCK ═══════════
 function tick(){
@@ -1029,6 +1045,7 @@ function goTo(name){
   if(name==='stats'){snap();renderCharts();}
   if(name==='economy'){renderEconomy();}
   if(name==='ai'){initChat();}
+  if(name==='log'||name==='home'){renderAll();}
 }
 
 // ═══════════ CATEGORIES ═══════════
@@ -1105,70 +1122,63 @@ function renderWaterCups(){
 }
 
 // ═══════════ SUGAR ═══════════
-const CUBE_TO_GRAM = 4.5; // 1 küp şeker ≈ 4.5g
-let sugarUnit = 'gram'; // 'gram' or 'cube'
 
-function setSugarUnit(unit){
-  sugarUnit = unit;
-  const isGram = unit === 'gram';
-  document.getElementById('unitGram').style.background = isGram ? 'var(--sugar)' : 'transparent';
-  document.getElementById('unitGram').style.color = isGram ? '#fff' : 'var(--ink3)';
-  document.getElementById('unitCube').style.background = !isGram ? 'var(--sugar)' : 'transparent';
-  document.getElementById('unitCube').style.color = !isGram ? '#fff' : 'var(--ink3)';
-  document.getElementById('sgUnitLbl').textContent = isGram ? 'Miktar (g)' : 'Küp Sayısı';
-  document.getElementById('sgInp').value = isGram ? 5 : 2;
-  // Update chips
+// Product config: { label, emoji, unit, unitLabel, gramsPerUnit, defaultVal, chips }
+const SUGAR_PRODUCTS = {
+  cay:       { label:'Çay',        emoji:'🍵', unit:'cube',  unitLabel:'Küp',    gramsPerUnit:4.5, defaultVal:2, chips:[1,2,3,4] },
+  kola:      { label:'Kola',       emoji:'🥤', unit:'ml',    unitLabel:'ml',     gramsPerUnit:0.106, defaultVal:330, chips:[150,200,250,330] },
+  biskuvi:   { label:'Bisküvi',    emoji:'🍪', unit:'adet',  unitLabel:'Adet',   gramsPerUnit:2.5, defaultVal:3, chips:[1,2,3,5] },
+  meyvesuyu: { label:'Meyve Suyu', emoji:'🧃', unit:'ml',    unitLabel:'ml',     gramsPerUnit:0.11, defaultVal:200, chips:[100,150,200,250] },
+  cikolata:  { label:'Çikolata',   emoji:'🍫', unit:'kare',  unitLabel:'Kare',   gramsPerUnit:5, defaultVal:2, chips:[1,2,3,5] },
+  pasta:     { label:'Pasta',      emoji:'🎂', unit:'dilim', unitLabel:'Dilim',  gramsPerUnit:30, defaultVal:1, chips:[1,2,3] },
+  bal:       { label:'Bal',        emoji:'🍯', unit:'kasik', unitLabel:'T. Kaşığı', gramsPerUnit:6, defaultVal:1, chips:[1,2,3] },
+  ozel:      { label:'Özel',       emoji:'✏️', unit:'gram',  unitLabel:'gram',   gramsPerUnit:1, defaultVal:10, chips:[5,10,15,25] },
+};
+
+let curSgProduct = null;
+
+function openSugarModal(key){
+  const p = SUGAR_PRODUCTS[key];
+  if(!p) return;
+  curSgProduct = key;
+  tmpSgLabel = p.label;
+  document.getElementById('sugarTitle').textContent = p.emoji + ' ' + p.label;
+  document.getElementById('sugarSubtitle').textContent = `Kaç ${p.unitLabel} tükettin?`;
+  document.getElementById('sgUnitLbl').textContent = p.unitLabel;
+  document.getElementById('sgInp').value = p.defaultVal;
+  // Chips
   const chips = document.getElementById('sgChips');
-  if(isGram){
-    chips.innerHTML = `
-      <button class="sch" onclick="setSgVal(4)">4g</button>
-      <button class="sch" onclick="setSgVal(8)">8g</button>
-      <button class="sch" onclick="setSgVal(15)">15g</button>
-      <button class="sch" onclick="setSgVal(25)">25g</button>`;
-  } else {
-    chips.innerHTML = `
-      <button class="sch" onclick="setSgVal(1)">1 küp</button>
-      <button class="sch" onclick="setSgVal(2)">2 küp</button>
-      <button class="sch" onclick="setSgVal(3)">3 küp</button>
-      <button class="sch" onclick="setSgVal(5)">5 küp</button>`;
-  }
-  updSg();
-}
-
-function openCubeSugar(){
-  tmpSgLabel='Küp Şeker';
-  document.getElementById('sugarTitle').textContent='🟫 Küp Şeker';
-  sugarUnit='gram';
-  setSugarUnit('cube');
-  document.getElementById('sgInp').value=2;
-  updSg();
-  document.getElementById('ovSugar').classList.add('on');
-}
-
-function openSugarModal(lbl,def){
-  tmpSgLabel=lbl;tmpSgDef=def||5;
-  document.getElementById('sugarTitle').textContent='🍬 '+lbl;
-  sugarUnit='gram';
-  setSugarUnit('gram');
-  document.getElementById('sgInp').value=def||5;
+  chips.innerHTML = p.chips.map(c =>
+    `<button class="sch" onclick="setSgVal(${c})">${c} ${p.unitLabel}</button>`
+  ).join('');
   updSg();
   document.getElementById('ovSugar').classList.add('on');
 }
 function closeSugar(){document.getElementById('ovSugar').classList.remove('on');}
-function adjSg(d){const el=document.getElementById('sgInp');el.value=Math.max(1,(parseInt(el.value)||0)+d);updSg();}
+function adjSg(d){
+  const el=document.getElementById('sgInp');
+  const p=SUGAR_PRODUCTS[curSgProduct];
+  const step = p && p.unit==='ml' ? 50 : 1;
+  el.value=Math.max(1,(parseFloat(el.value)||0)+d*step);
+  updSg();
+}
 function setSgVal(v){document.getElementById('sgInp').value=v;updSg();}
 function updSg(){
-  const v=parseInt(document.getElementById('sgInp').value)||0;
-  const grams = sugarUnit==='cube' ? Math.round(v * CUBE_TO_GRAM) : v;
-  document.getElementById('sgPrev').textContent = sugarUnit==='cube' ? v : grams;
-  document.getElementById('sgPrevLbl').textContent = sugarUnit==='cube' ? `küp = ${grams}g şeker` : 'gram şeker';
-  document.getElementById('sgNote').textContent=`Ekledikten sonra: ${totalSg()+grams}g / 25g`;
+  const p = SUGAR_PRODUCTS[curSgProduct];
+  if(!p) return;
+  const v = parseFloat(document.getElementById('sgInp').value)||0;
+  const grams = Math.round(v * p.gramsPerUnit);
+  document.getElementById('sgPrev').textContent = v;
+  document.getElementById('sgPrevLbl').textContent = `${p.unitLabel} = yaklaşık ${grams}g şeker`;
+  document.getElementById('sgNote').textContent = `Ekledikten sonra: ${totalSg()+grams}g / 25g`;
 }
 function logSugar(){
-  const v=parseInt(document.getElementById('sgInp').value)||0;
-  if(!v)return;
-  const grams = sugarUnit==='cube' ? Math.round(v * CUBE_TO_GRAM) : v;
-  const label = sugarUnit==='cube' ? `${tmpSgLabel} (${v} küp)` : tmpSgLabel;
+  const p = SUGAR_PRODUCTS[curSgProduct];
+  if(!p) return;
+  const v = parseFloat(document.getElementById('sgInp').value)||0;
+  if(!v) return;
+  const grams = Math.round(v * p.gramsPerUnit);
+  const label = `${p.emoji} ${p.label} (${v} ${p.unitLabel})`;
   S.sugarLog.push({id:Date.now(),label,g:grams});
   snap();sv();renderHealth();closeSugar();
 }
@@ -1284,19 +1294,22 @@ function renderAll(){
 
 // ═══════════ LINE CHARTS ═══════════
 function renderCharts(){
-  const days=getLast7();
+  const n = chartDays;
+  const days = getDays(n);
   const stepsD =days.map(d=>d.isToday?S.steps:(S.hist[d.key]?.steps||0));
   const waterD =days.map(d=>d.isToday?S.water:(S.hist[d.key]?.water||0));
   const sugarD =days.map(d=>d.isToday?totalSg():(S.hist[d.key]?.sugar||0));
   const bookD  =days.map(d=>d.isToday?totalBk():(S.hist[d.key]?.book||0));
-  // Total calories = step calories + exercise calories
   const calD   =days.map(d=>{
     if(d.isToday) return Math.round(S.steps*.04) + totalCal();
     const h=S.hist[d.key];
     return h ? Math.round((h.steps||0)*.04) + (h.cal||0) : 0;
   });
-  const sleepD  =days.map(d=>d.isToday?S.sleep?.hours||0:(S.hist[d.key]?.sleep||0));
-  const labels  =days.map(d=>d.label);
+  const sleepD =days.map(d=>d.isToday?S.sleep?.hours||0:(S.hist[d.key]?.sleep||0));
+
+  // For long ranges, show only some labels to avoid clutter
+  const skip = n<=7?1:n<=31?3:n<=90?7:30;
+  const labels = days.map((d,i)=>(i%skip===0||d.isToday)?d.label:'');
 
   buildLineChart('chartCal',  'Toplam Kalori',calD,  labels,'var(--orange)',CAL_GOAL,'kcal');
   buildLineChart('chartSteps','Adım',          stepsD,labels,'var(--lime)',  STEP_GOAL,'adım');
@@ -1309,7 +1322,7 @@ function renderCharts(){
 function buildLineChart(containerId, title, data, labels, color, goal, unit, invertGoal=false){
   const el=document.getElementById(containerId);
   if(!el)return;
-  const todayVal=data[6];
+  const todayVal=data[data.length-1];
   const nonZero=data.filter(v=>v>0);
   const avg=nonZero.length?Math.round(nonZero.reduce((a,b)=>a+b,0)/nonZero.length):0;
   const maxVal=Math.max(...data,goal,1);
