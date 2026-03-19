@@ -587,6 +587,7 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
       <button class="chart-filter"    id="cf365" onclick="setChartRange(365)">1Y</button>
     </div>
     <div class="cards">
+      <div class="chart-card" id="chartScore"></div>
       <div class="chart-card" id="chartCal"></div>
       <div class="chart-card" id="chartSteps"></div>
       <div class="chart-card" id="chartWater"></div>
@@ -657,6 +658,10 @@ body{font-family:'Nunito',sans-serif;color:var(--ink);display:flex;justify-conte
     <!-- SAVINGS TIP -->
     <div class="slabel">TASARRUF İPUCU</div>
     <div class="eco-tip" id="ecoTip">💡 İlk harcamanı ekle, sana kişisel tasarruf önerileri sunayım!</div>
+
+    <!-- BUDGET SCORE -->
+    <div class="slabel">BÜTÇE SKORU</div>
+    <div class="chart-card" id="ecoScoreCard" style="margin:0 20px 20px"></div>
 
   </div>
 
@@ -941,7 +946,7 @@ const CATS = ['Tümü','Üst Vücut','Alt Vücut','Core','Kardiyo','Esneklik'];
 const CM = {blue:'rgba(91,156,246,.12)',orange:'rgba(240,123,58,.12)',lime:'rgba(201,240,71,.12)',red:'rgba(240,90,90,.12)'};
 const CT = {blue:'#5B9CF6',orange:'#F07B3A',lime:'#C9F047',red:'#F05A5A'};
 
-const STEP_GOAL=10000, WATER_GOAL=2000, SUGAR_LIM=25, BOOK_GOAL=20, CAL_GOAL=500;
+const STEP_GOAL=10000, WATER_GOAL=2000, SUGAR_LIM=25, BOOK_GOAL=10, CAL_GOAL=300;
 
 let S = JSON.parse(localStorage.getItem('ft4')||'null') || {steps:0,log:[],water:0,sugarLog:[],bookLog:[],hist:{}};
 ['sugarLog','bookLog'].forEach(k=>{if(!S[k])S[k]=[];});
@@ -952,7 +957,7 @@ let curCat='Tümü', curEx=null, tmpStep=0, tmpSgLabel='', tmpSgDef=5;
 
 // ═══════════ UTILS ═══════════
 function todayKey(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function snap(){S.hist[todayKey()]={steps:S.steps,water:S.water,sugar:totalSg(),book:totalBk(),cal:Math.round(S.steps*.04)+totalCal(),sleep:S.sleep?.hours||0};sv();}
+function snap(){S.hist[todayKey()]={steps:S.steps,water:S.water,sugar:totalSg(),book:totalBk(),cal:Math.round(S.steps*.04)+totalCal(),sleep:S.sleep?.hours||0,score:calcScore()};sv();}
 function totalSg(){return S.sugarLog.reduce((a,x)=>a+x.g,0);}
 function totalBk(){return S.bookLog.reduce((a,x)=>a+x.p,0);}
 function totalCal(){return S.log.reduce((a,x)=>a+x.cal,0);}
@@ -1265,11 +1270,13 @@ function renderCharts(){
     return h ? Math.round((h.steps||0)*.04) + (h.cal||0) : 0;
   });
   const sleepD =days.map(d=>d.isToday?S.sleep?.hours||0:(S.hist[d.key]?.sleep||0));
+  const scoreD =days.map(d=>d.isToday?calcScore():(S.hist[d.key]?.score||0));
 
   // For long ranges, show only some labels to avoid clutter
   const skip = n<=7?1:n<=31?3:n<=90?7:30;
   const labels = days.map((d,i)=>(i%skip===0||d.isToday)?d.label:'');
 
+  buildScoreChart('chartScore', scoreD, labels);
   buildLineChart('chartCal',  'Toplam Kalori',calD,  labels,'var(--orange)',CAL_GOAL,'kcal');
   buildLineChart('chartSteps','Adım',          stepsD,labels,'var(--lime)',  STEP_GOAL,'adım');
   buildLineChart('chartWater','Su',            waterD,labels,'var(--cyan)',  WATER_GOAL,'ml');
@@ -1278,7 +1285,96 @@ function renderCharts(){
   buildLineChart('chartSleep','Uyku',          sleepD,labels,'#6366F1',      SLEEP_GOAL,'saat');
 }
 
-function buildLineChart(containerId, title, data, labels, color, goal, unit, invertGoal=false){
+function buildScoreChart(containerId, data, labels){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const todayVal = data[data.length-1];
+  const nonZero = data.filter(v=>v>0);
+  const avg = nonZero.length ? Math.round(nonZero.reduce((a,b)=>a+b,0)/nonZero.length) : 0;
+  const maxVal = 100;
+  const W=320, H=90, PAD={t:6,r:6,b:4,l:6};
+  const iW=W-PAD.l-PAD.r, iH=H-PAD.t-PAD.b;
+  const n=data.length;
+  const xStep=iW/(n-1);
+  const yOf=v=>PAD.t+iH-(v/maxVal*iH);
+  const xOf=i=>PAD.l+i*xStep;
+
+  const pts=data.map((v,i)=>({x:xOf(i),y:yOf(v)}));
+
+  function smoothPath(pts){
+    if(pts.length<2)return '';
+    let d=`M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for(let i=0;i<pts.length-1;i++){
+      const p0=pts[i],p1=pts[i+1];
+      const cx=(p0.x+p1.x)/2;
+      d+=` C ${cx.toFixed(1)} ${p0.y.toFixed(1)}, ${cx.toFixed(1)} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+    }
+    return d;
+  }
+  function areaPath(pts){
+    const line=smoothPath(pts);
+    const last=pts[pts.length-1],first=pts[0];
+    return line+` L ${last.x.toFixed(1)} ${(PAD.t+iH).toFixed(1)} L ${first.x.toFixed(1)} ${(PAD.t+iH).toFixed(1)} Z`;
+  }
+
+  // Grade bands: E<15, D<35, C<55, B<75, A<90, S>=90
+  const bands = [
+    {min:0,  max:15,  color:'#ef4444', label:'E'},
+    {min:15, max:35,  color:'#f97316', label:'D'},
+    {min:35, max:55,  color:'#eab308', label:'C'},
+    {min:55, max:75,  color:'#84cc16', label:'B'},
+    {min:75, max:90,  color:'#22c55e', label:'A'},
+    {min:90, max:100, color:'#10b981', label:'S'},
+  ];
+
+  const bandRects = bands.map(b=>{
+    const y1=yOf(b.max), y2=yOf(b.min);
+    return `<rect x="${PAD.l}" y="${y1.toFixed(1)}" width="${iW}" height="${(y2-y1).toFixed(1)}" fill="${b.color}" opacity="0.06"/>`;
+  }).join('');
+
+  const grade = scoreGrade(todayVal);
+  const gradeColor = bands.find(b=>b.label===grade)?.color || 'var(--lime)';
+
+  const dots = pts.map((p,i)=>{
+    const isToday=i===n-1;
+    const g=scoreGrade(data[i]);
+    const dc=bands.find(b=>b.label===g)?.color||'var(--lime)';
+    const r=isToday?4:2.5;
+    const op=isToday?1:0.6;
+    return`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r}" fill="${dc}" opacity="${op}"/>`+
+      (isToday?`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="${dc}" opacity="0.15"/>`:'');
+  }).join('');
+
+  el.innerHTML=`
+    <div class="chart-head">
+      <div>
+        <div class="chart-title">Günlük Puan</div>
+        <div class="chart-avg">Ort: ${avg} puan</div>
+      </div>
+      <div class="chart-today" style="color:${gradeColor}">${todayVal}<span style="font-size:11px;opacity:.6;margin-left:3px">/ 100</span><span style="font-size:13px;font-weight:800;margin-left:6px">${grade}</span></div>
+    </div>
+    <div class="chart-svg-wrap">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="g_score" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${gradeColor}" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="${gradeColor}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${bandRects}
+        <path d="${areaPath(pts)}" fill="url(#g_score)"/>
+        <path d="${smoothPath(pts)}" fill="none" stroke="${gradeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+        ${dots}
+      </svg>
+    </div>
+    <div class="chart-days">${labels.map((l,i)=>`<div class="chart-day${i===n-1?' now':''}">${l}</div>`).join('')}</div>
+    <div class="chart-goal-note" style="display:flex;gap:10px;flex-wrap:wrap">
+      ${bands.map(b=>`<span style="color:${b.color};font-weight:700">${b.label}</span><span style="color:var(--ink3)">${b.min}+</span>`).join('<span style="color:var(--border)">·</span>')}
+    </div>
+  `;
+}
+
+
   const el=document.getElementById(containerId);
   if(!el)return;
   const todayVal=data[data.length-1];
@@ -1603,20 +1699,103 @@ function renderEconomy(){
   // Tip
   const tipEl=document.getElementById('ecoTip');
   if(tipEl) tipEl.innerHTML=genTip(S.ecoTx,budget,exp);
+
+  // Budget Score
+  const scoreCard=document.getElementById('ecoScoreCard');
+  if(scoreCard) renderBudgetScore(scoreCard, exp, inc, budget);
 }
 
-// ═══════════ SCORE SYSTEM ═══════════
+// ═══════════ BUDGET SCORE ═══════════
+function calcBudgetScore(exp, inc, budget){
+  const items = [];
+  let total = 0;
+
+  // 1. Bütçe kontrolü (40p)
+  if(!budget){
+    items.push({label:'Bütçe belirlenmemiş', pts:0, max:40, emoji:'⚙️', note:'Bütçe gir ve puan kazan'});
+  } else {
+    const pct = exp / budget;
+    const pts = pct <= 0.6 ? 40 : pct <= 0.75 ? 34 : pct <= 0.9 ? 26 : pct <= 1.0 ? 18 : pct <= 1.15 ? 8 : 0;
+    const note = pct <= 0.6 ? 'Harika kontrol! 🎉' : pct <= 0.9 ? 'İyi gidiyorsun' : pct <= 1.0 ? 'Limite yakın, dikkat' : 'Bütçe aşıldı ⚠️';
+    items.push({label:'Bütçe Yönetimi', pts, max:40, emoji:'🎯', note});
+    total += pts;
+  }
+
+  // 2. Gelir-gider dengesi (35p)
+  if(inc === 0 && exp === 0){
+    items.push({label:'İşlem girilmemiş', pts:0, max:35, emoji:'📊', note:'Gelir/gider ekle'});
+  } else if(inc === 0){
+    items.push({label:'Gelir-Gider Dengesi', pts:5, max:35, emoji:'📊', note:'Gelir kaydı yok'});
+    total += 5;
+  } else {
+    const ratio = exp / inc;
+    const pts = ratio <= 0.5 ? 35 : ratio <= 0.7 ? 28 : ratio <= 0.85 ? 20 : ratio <= 1.0 ? 12 : ratio <= 1.2 ? 5 : 0;
+    const note = ratio <= 0.5 ? 'Gelirinin yarısından azını harcıyorsun 💪' : ratio <= 0.7 ? 'Dengeli harcama' : ratio <= 1.0 ? 'Gelire yakın harcama' : 'Gider geliri aşıyor';
+    items.push({label:'Gelir-Gider Dengesi', pts, max:35, emoji:'📊', note});
+    total += pts;
+  }
+
+  // 3. İşlem çeşitliliği (25p) — kayıt tutma alışkanlığı
+  const txCount = S.ecoTx.length;
+  const pts3 = txCount >= 10 ? 25 : txCount >= 5 ? 18 : txCount >= 3 ? 12 : txCount >= 1 ? 6 : 0;
+  const note3 = txCount >= 10 ? 'Düzenli takip, süper!' : txCount >= 3 ? 'İyi takip alışkanlığı' : txCount >= 1 ? 'Takibe başladın' : 'Henüz işlem yok';
+  items.push({label:'Kayıt Tutma', pts:pts3, max:25, emoji:'📝', note:note3});
+  total += pts3;
+
+  return {score: Math.min(100, total), items};
+}
+
+function budgetGrade(s){
+  return s >= 90?'S': s >= 75?'A': s >= 55?'B': s >= 35?'C': s >= 15?'D':'E';
+}
+
+function renderBudgetScore(el, exp, inc, budget){
+  const {score, items} = calcBudgetScore(exp, inc, budget);
+  const grade = budgetGrade(score);
+  const gradeColors = {S:'#10b981',A:'#22c55e',B:'#84cc16',C:'#eab308',D:'#f97316',E:'#ef4444'};
+  const color = gradeColors[grade] || '#84cc16';
+
+  const barItems = items.map(it=>{
+    const pct = it.max > 0 ? Math.round(it.pts/it.max*100) : 0;
+    const barColor = pct >= 80 ? '#22c55e' : pct >= 50 ? '#84cc16' : pct >= 25 ? '#eab308' : '#ef4444';
+    return `
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="font-size:12px;font-weight:700;color:var(--ink)">${it.emoji} ${it.label}</div>
+          <div style="font-size:11px;font-weight:700;color:${barColor}">${it.pts}/${it.max}p</div>
+        </div>
+        <div style="height:5px;background:var(--s3);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:3px;transition:width .4s"></div>
+        </div>
+        <div style="font-size:10px;color:var(--ink3);margin-top:3px">${it.note}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML=`
+    <div class="chart-head" style="margin-bottom:14px">
+      <div>
+        <div class="chart-title">Bütçe Skoru</div>
+        <div class="chart-avg">Bu aya ait finansal performans</div>
+      </div>
+      <div style="text-align:right">
+        <div class="chart-today" style="color:${color}">${score}<span style="font-size:11px;opacity:.6;margin-left:3px">/100</span></div>
+        <div style="font-size:18px;font-weight:900;color:${color};line-height:1">${grade}</div>
+      </div>
+    </div>
+    ${barItems}
+  `;
+}
+
+
 // Toplam MAX = 100p | Kısmi puan sistemi — az yaptıysan da puan alırsın
-// Ağırlıklar: Uyku 22 | Adım 20 | Egzersiz 18 | Su 15 | Şeker 15 | Kitap 7 | Bütçe 3
+// Ağırlıklar: Uyku 20 | Adım 20 | Egzersiz 20 | Su 15 | Şeker 15 | Kitap 10
 const SCORE_ITEMS = [
   {
-    key:'sleep', label:'Uyku', emoji:'🌙', maxPoints:22,
+    key:'sleep', label:'Uyku', emoji:'🌙', maxPoints:20,
     calc(){
       const h = S.sleep?.hours || 0;
       const q = S.sleep?.quality || 0;
-      // Saat puanı (max 16p): 8+ saat = tam, kademeli düşüş
-      const hScore = h >= 8 ? 16 : h >= 7 ? 13 : h >= 6 ? 9 : h >= 5 ? 5 : h > 0 ? 2 : 0;
-      // Kalite bonusu (max 6p)
+      const hScore = h >= 8 ? 14 : h >= 7 ? 11 : h >= 6 ? 7 : h >= 5 ? 4 : h > 0 ? 2 : 0;
       const qScore = q >= 4 ? 6 : q === 3 ? 4 : q === 2 ? 2 : q === 1 ? 1 : 0;
       return hScore + qScore;
     }
@@ -1633,17 +1812,16 @@ const SCORE_ITEMS = [
     }
   },
   {
-    key:'ex', label:'Egzersiz', emoji:'💪', maxPoints:18,
+    key:'ex', label:'Egzersiz', emoji:'💪', maxPoints:20,
     calc(){
       const cal = totalCal();
       const count = S.log.length;
       if(count === 0) return 0;
-      // Kalori bazlı: 300+ kcal = tam puan, kademeli
-      if(cal >= 300) return 18;
-      if(cal >= 200) return 14;
-      if(cal >= 100) return 10;
+      if(cal >= CAL_GOAL) return 20;
+      if(cal >= CAL_GOAL * 0.67) return 15;
+      if(cal >= CAL_GOAL * 0.33) return 10;
       if(cal >= 50)  return 6;
-      return 3; // en az 1 egzersiz girildiyse
+      return 3;
     }
   },
   {
@@ -1661,8 +1839,8 @@ const SCORE_ITEMS = [
     key:'sugar', label:'Şeker', emoji:'🍬', maxPoints:15,
     calc(){
       const sg = totalSg();
-      if(sg === 0) return 15; // hiç yenmediyse tam puan
-      const ratio = sg / SUGAR_LIM; // 1.0 = limit, <1 iyi, >1 kötü
+      if(sg === 0) return 15;
+      const ratio = sg / SUGAR_LIM;
       if(ratio <= 1)    return 15;
       if(ratio <= 1.25) return 10;
       if(ratio <= 1.5)  return 6;
@@ -1671,23 +1849,12 @@ const SCORE_ITEMS = [
     }
   },
   {
-    key:'book', label:'Kitap', emoji:'📚', maxPoints:7,
+    key:'book', label:'Kitap', emoji:'📚', maxPoints:10,
     calc(){
       const pg = totalBk();
-      if(pg >= BOOK_GOAL) return 7;
-      if(pg >= BOOK_GOAL * 0.5) return 4;
-      return pg > 0 ? 2 : 0;
-    }
-  },
-  {
-    key:'budget', label:'Bütçe', emoji:'💰', maxPoints:3,
-    calc(){
-      if(!S.ecoBudget) return 3; // bütçe girilmemişse nötr tam puan
-      const pct = totalExpense() / S.ecoBudget;
-      if(pct <= 0.8)  return 3;
-      if(pct <= 1.0)  return 2;
-      if(pct <= 1.2)  return 1;
-      return 0;
+      if(pg >= BOOK_GOAL) return 10;
+      if(pg >= BOOK_GOAL * 0.5) return 6;
+      return pg > 0 ? 3 : 0;
     }
   },
 ];
