@@ -951,6 +951,32 @@ const STEP_GOAL=10000, WATER_GOAL=2000, SUGAR_LIM=25, BOOK_GOAL=10, CAL_GOAL=300
 let S = JSON.parse(localStorage.getItem('ft4')||'null') || {steps:0,log:[],water:0,sugarLog:[],bookLog:[],hist:{}};
 ['sugarLog','bookLog'].forEach(k=>{if(!S[k])S[k]=[];});
 if(!S.hist)S.hist={};
+
+// ── Otomatik günlük sıfırlama ──
+(function autoResetDaily(){
+  const today = (()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
+  if(S.lastSavedDate && S.lastSavedDate !== today){
+    // Önceki günün verisini history'e kaydet
+    S.hist[S.lastSavedDate]={
+      steps: S.steps||0,
+      water: S.water||0,
+      sugar: (S.sugarLog||[]).reduce((a,b)=>a+(b.g||0),0),
+      book:  (S.bookLog||[]).reduce((a,b)=>a+(b.p||0),0),
+      cal:   Math.round((S.steps||0)*0.04),
+      sleep: S.sleep?.hours||0
+    };
+    // Günlük verileri sıfırla
+    S.steps    = 0;
+    S.log      = [];
+    S.water    = 0;
+    S.sugarLog = [];
+    S.bookLog  = [];
+    S.sleep    = {hours:0, quality:0};
+    localStorage.setItem('ft4', JSON.stringify(S));
+  }
+  S.lastSavedDate = today;
+  localStorage.setItem('ft4', JSON.stringify(S));
+})();
 function sv(){localStorage.setItem('ft4',JSON.stringify(S));}
 
 let curCat='Tümü', curEx=null, tmpStep=0, tmpSgLabel='', tmpSgDef=5;
